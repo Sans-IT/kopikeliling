@@ -1,0 +1,4 @@
+/* global.css */
+@tailwind components;
+@tailwind base;
+@tailwind utilities;
