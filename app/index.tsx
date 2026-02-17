@@ -1,15 +1,9 @@
-import { Text, View } from "react-native";
+import { useAuth } from "@/hooks/useAuth";
+import Login from "./login";
+import Register from "./register";
 
 export default function Index() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+  const { session } = useAuth();
+
+  return !session ? <Login /> : <Register />;
 }

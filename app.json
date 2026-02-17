@@ -39,11 +39,20 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "66b14ff8-a1df-4642-8c38-558776b0c7e5"
+      }
+    },
+    "owner": "sans_it"
   }
 }
