@@ -1,50 +1,61 @@
-# Welcome to your Expo app 👋
+# Kopi Keliling 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplikasi mobile pencari kopi keliling secara realtime yang dibuat dengan **Expo** dan **Supabase**.
 
-## Get started
+> [!WARNING]
+> **Status Project**: Masih dalam tahap pengembangan awal (Early Development). Banyak data yang ditampilkan masih berupa **Dummy** atau **Simulasi**.
 
-1. Install dependencies
+## Fitur & Progress Checklist
+
+### ⚙️ Konfigurasi & Infrasruktur
+
+- [x] **Inisialisasi Project**: Expo Framework & Folder Structure.
+- [x] **Database**: Integrasi Supabase (PostgreSQL).
+- [x] **Maps**: Google Maps SDK (API Key aktif).
+- [x] **Routing**: OSRM Service untuk simulasi rute.
+
+### 🔐 Autentikasi (Auth)
+
+- [/] **Google Login**: [READY] Bisa login via akun Google.
+- [ ] **Email/Password**: [PLANNING] Belum diimplementasikan.
+- [ ] **Manajemen User**: [PLANNING] Belum ada role Pembeli/Penjual yang sebenarnya.
+
+### 🗺️ Peta & Realtime (The Core)
+
+- [x] **Peta Interaktif**: [READY] Zoom, Pan, & User Location.
+- [/] **Realtime Tracking**: [SIMULASI] Menggunakan Supabase Realtime, tapi pergerakan rider masih disimulasikan dari sisi kode (bukan driver asli).
+- [x] **Pencarian Rider**: [READY] Filter nama rider di peta.
+- [x] **Simulasi Rute**: [READY] Navigasi garis (Polyline) antara user dan rider.
+
+### 🏠 Halaman Aplikasi (Screens)
+
+- [ ] **Beranda**: [DUMMY] Masih berupa halaman kosong (Beranda Text).
+- [x] **Map**: [READY] Halaman inti berfungsi penuh dengan simulasi.
+- [ ] **Menu**: [DUMMY] Berisi data placeholder makanan (Burger, Pizza) - **BELUM ADA DATA KOPI**.
+- [x] **Profil**: [READY] Menampilkan info Google & fungsi Logout.
+
+---
+
+## Persiapan Instalasi
+
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Jalankan Aplikasi**
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Gunakan Perangkat Fisik (Android)**
+   Sangat disarankan memakai HP asli untuk mencoba fitur GPS & Map:
+   ```bash
+   npx expo run:android --device
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+_Project ini dikembangkan oleh STEVEN untuk kebutuhan simulasi UMKM Kopi Keliling._

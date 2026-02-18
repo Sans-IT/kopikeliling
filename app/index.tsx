@@ -3,7 +3,7 @@ import Login from "./login";
 import Register from "./register";
 
 export default function Index() {
-  const { session } = useAuth();
+	const { session } = useAuth();
 
-  return !session ? <Login /> : <Register />;
+	return !session ? <Login /> : <Register />;
 }

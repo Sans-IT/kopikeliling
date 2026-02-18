@@ -1,7 +1,7 @@
-import React from "react";
-import { View, FlatList, Image, TouchableOpacity } from "react-native";
-import { Card, Text, Surface, IconButton } from "react-native-paper";
 import { useAppTheme } from "@/context/ThemeContext";
+import React from "react";
+import { FlatList, Image, View } from "react-native";
+import { Card, Searchbar, Text } from "react-native-paper";
 
 // Data Menu dengan Harga
 const MENU_DATA = [
@@ -17,6 +17,7 @@ const MENU_DATA = [
 
 export default function Menu() {
 	const { theme } = useAppTheme();
+	const [searchQuery, setSearchQuery] = React.useState("");
 
 	// Helper untuk format Rupiah
 	const formatCurrency = (value: number) => {
@@ -31,11 +32,13 @@ export default function Menu() {
 		<View className="flex-1 m-2">
 			<Card
 				mode="elevated"
-				style={{ borderRadius: 16, overflow: "hidden", elevation: 4 }}>
+				style={{ borderRadius: 16, overflow: "hidden", elevation: 4 }}
+			>
 				{/* Header Gambar dengan Background halus */}
 				<View
 					className="items-center justify-center p-4"
-					style={{ backgroundColor: theme.colors.surfaceVariant }}>
+					style={{ backgroundColor: theme.colors.surfaceVariant }}
+				>
 					<Image
 						source={require("@/assets/images/logo.png")}
 						style={{ width: 80, height: 80 }}
@@ -50,7 +53,8 @@ export default function Menu() {
 					<Text
 						variant="bodySmall"
 						numberOfLines={1}
-						style={{ color: theme.colors.outline }}>
+						style={{ color: theme.colors.outline }}
+					>
 						{item.desc}
 					</Text>
 
@@ -58,7 +62,8 @@ export default function Menu() {
 					<View className="flex-row justify-between items-center mt-3">
 						<Text
 							variant="titleSmall"
-							style={{ color: theme.colors.primary, fontWeight: "700" }}>
+							style={{ color: theme.colors.primary, fontWeight: "700" }}
+						>
 							{formatCurrency(item.price)}
 						</Text>
 					</View>
@@ -70,7 +75,14 @@ export default function Menu() {
 	return (
 		<View
 			className="flex-1"
-			style={{ backgroundColor: theme.colors.background }}>
+			style={{ backgroundColor: theme.colors.background }}
+		>
+			<Searchbar
+				placeholder="Search"
+				onChangeText={setSearchQuery}
+				value={searchQuery}
+				style={{ borderRadius: 0 }}
+			/>
 			<FlatList
 				data={MENU_DATA}
 				renderItem={renderItem}

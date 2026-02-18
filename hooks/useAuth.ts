@@ -4,36 +4,60 @@ import { useEffect } from "react";
 import { Session } from "@supabase/supabase-js";
 
 export function useAuth() {
-  const queryClient = useQueryClient();
+	const queryClient = useQueryClient();
 
-  // 1. Query untuk mengambil session (Cache-based)
-  const query = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
-    },
-    staleTime: Infinity, // Session dianggap "segar" terus kecuali di-invalidate
-  });
+	// 1. Query untuk mengambil session (Cache-based)
+	const sessionQuery = useQuery({
+		queryKey: ["session"],
+		queryFn: async () => {
+			const { data } = await supabase.auth.getSession();
+			return data.session;
+		},
+		staleTime: Infinity,
+	});
 
-  // 2. Listener untuk sinkronisasi otomatis (Login/Logout)
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        // Update cache TanStack secara manual saat status berubah
-        queryClient.setQueryData(["session"], session);
-      },
-    );
+	const userId = sessionQuery.data?.user?.id;
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [queryClient]);
+	// 2. Query untuk mengambil profile (Role, Name, etc)
+	const profileQuery = useQuery({
+		queryKey: ["profile", userId],
+		queryFn: async () => {
+			if (!userId) return null;
+			const { data, error } = await supabase
+				.from("profiles")
+				.select("*")
+				.eq("id", userId)
+				.single();
 
-  return {
-    session: query.data as Session | null,
-    isLoading: query.isLoading,
-    user: query.data?.user ?? null,
-    isAuthenticated: !!query.data?.user,
-  };
+			if (error) throw error;
+			return data;
+		},
+		enabled: !!userId,
+		retry: 3,
+	});
+
+	// 3. Listener untuk sinkronisasi otomatis (Login/Logout)
+	useEffect(() => {
+		const { data: authListener } = supabase.auth.onAuthStateChange(
+			(_event, session) => {
+				queryClient.setQueryData(["session"], session);
+				if (!session) {
+					queryClient.setQueryData(["profile", null], null);
+				}
+			},
+		);
+
+		return () => {
+			authListener.subscription.unsubscribe();
+		};
+	}, [queryClient]);
+
+	return {
+		session: sessionQuery.data as Session | null,
+		isLoading: sessionQuery.isLoading || profileQuery.isLoading,
+		user: sessionQuery.data?.user ?? null,
+		profile: profileQuery.data,
+		role: profileQuery.data?.role ?? "GUEST",
+		isAuthenticated: !!sessionQuery.data?.user,
+	};
 }

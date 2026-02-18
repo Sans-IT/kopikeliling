@@ -49,12 +49,14 @@ export default function Register() {
 	return (
 		<SafeAreaView
 			className="flex-1"
-			style={{ backgroundColor: theme.colors.background }}>
+			style={{ backgroundColor: theme.colors.background }}
+		>
 			{/* Menggunakan View yang sama dengan Login agar posisi fix */}
 			<View className="flex-1 p-8 justify-center">
 				<ScrollView
 					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+					contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+				>
 					{/* --- HEADER & LOGO (Sama persis sizenya) --- */}
 					<View className="items-center mb-10">
 						<Image
@@ -62,11 +64,17 @@ export default function Register() {
 							className="w-full h-48" // Sesuai login kamu (h-48)
 							resizeMode="contain"
 						/>
-						<Text className="text-3xl font-bold mt-5 text-gray-800">
+						<Text
+							className="text-4xl font-bold mt-5"
+							style={{ fontWeight: "bold" }}
+						>
 							Daftar
 						</Text>
-						<Text className="text-gray-500 mt-2 text-center">
-							Silahkan buat akun Anda untuk{"\n"}mulai memesan kopi
+						<Text
+							className="mt-2 text-center text-xl w-full text-center"
+							style={{ textAlign: "center" }}
+						>
+							Selamat Datang di KopiKeliling Silahkan daftar untuk membuat akun
 						</Text>
 					</View>
 
@@ -114,7 +122,8 @@ export default function Register() {
 							onPress={signUpWithEmail}
 							disabled={loading}
 							className="py-1 bg-[#1a2e35]"
-							labelStyle={{ fontSize: 16, fontWeight: "bold", color: "white" }}>
+							labelStyle={{ fontSize: 16, fontWeight: "bold", color: "white" }}
+						>
 							{loading ? (
 								<ActivityIndicator color="white" size="small" />
 							) : (
@@ -144,7 +153,8 @@ export default function Register() {
 			{/* --- BYPASS BUTTON --- */}
 			<TouchableOpacity
 				className="absolute top-14 right-6 p-2"
-				onPress={() => router.push("/(tabs)/map")}>
+				onPress={() => router.push("/(tabs)/map")}
+			>
 				<Text className="text-gray-400 font-medium">Lewati {">"}</Text>
 			</TouchableOpacity>
 		</SafeAreaView>
