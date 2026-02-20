@@ -4,108 +4,118 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./useAuth";
 
 export const useRiderSimulation = () => {
-	const { user, role } = useAuth();
-	const [myLocation, setMyLocation] = useState({
-		latitude: -7.2575,
-		longitude: 112.7521,
-	});
-	const [riders, setRiders] = useState<Rider[]>([]);
-	const [locationPermission, setLocationPermission] = useState<boolean | null>(
-		null,
-	);
-	const myLocationRef = useRef(myLocation);
+  const { user, role } = useAuth();
+  const [myLocation, setMyLocation] = useState({
+    latitude: -7.2575,
+    longitude: 112.7521,
+  });
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [locationPermission, setLocationPermission] = useState<boolean | null>(
+    null,
+  );
+  const myLocationRef = useRef(myLocation);
 
-	useEffect(() => {
-		myLocationRef.current = myLocation;
-	}, [myLocation]);
+  useEffect(() => {
+    myLocationRef.current = myLocation;
+  }, [myLocation]);
 
-	// 1. Fetch Riders & Their Locations
-	const fetchRiders = async () => {
-		const { data, error } = await supabase
-			.from("profiles")
-			.select(
-				`
-				id,
-				full_name,
-				role,
-				riders_location (
-					latitude,
-					longitude,
-					is_online
-				)
-			`,
-			)
-			.eq("role", "RIDER");
+  // 1. Fetch Riders & Their Locations (JOIN Profiles agar nama muncul)
+  const fetchRiders = async () => {
+    const { data, error } = await supabase
+      .from("riders_location")
+      .select(
+        `
+        latitude,
+        longitude,
+        is_online,
+        profiles (
+          id,
+          full_name,
+          role
+        )
+      `,
+      )
+      .eq("profiles.role", "RIDER"); // Hanya ambil yang rolenya RIDER
 
-		if (error) {
-			console.error("Error fetching riders:", error);
-			return;
-		}
+    if (error) {
+      console.error("Error fetching riders:", error);
+      return;
+    }
 
-		// Transform to Rider type
-		const transformedRiders: Rider[] = data.map((r: any) => ({
-			id: r.id,
-			name: r.full_name || "Rider",
-			// We use latOffset/lngOffset for the component compatibility,
-			// but we calculate them based on actual lat/lng
-			latOffset: r.riders_location?.latitude
-				? r.riders_location.latitude - myLocationRef.current.latitude
-				: 0,
-			lngOffset: r.riders_location?.longitude
-				? r.riders_location.longitude - myLocationRef.current.longitude
-				: 0,
-			isOpen: r.riders_location?.is_online || false,
-			workStartTime: "00:00",
-			workEndTime: "23:59",
-			inventory: [], // Inventory could be another table later
-		}));
+    console.log("Raw Data from DB:", data);
 
-		setRiders(transformedRiders);
-	};
+    // Transform to Rider type
+    const transformedRiders: Rider[] = (data || [])
+      .filter((item: any) => item.profiles) // Pastikan data profile-nya ada
+      .map((item: any) => {
+        const rLat = parseFloat(item.latitude);
+        const rLng = parseFloat(item.longitude);
 
-	useEffect(() => {
-		fetchRiders();
+        return {
+          id: item.profiles.id,
+          name: item.profiles.full_name || "Rider", // Ini yang bikin SEARCH ketemu
+          latOffset: rLat - myLocationRef.current.latitude,
+          lngOffset: rLng - myLocationRef.current.longitude,
+          isOpen: item.is_online || false,
+          workStartTime: "00:00",
+          workEndTime: "23:59",
+          inventory: [],
+        };
+      });
 
-		// 2. Realtime Listener for Location Updates
-		const channel = supabase
-			.channel("rider_updates")
-			.on(
-				"postgres_changes",
-				{ event: "*", schema: "public", table: "riders_location" },
-				() => {
-					fetchRiders(); // Re-fetch on any change for simplicity or optimize with payload
-				},
-			)
-			.subscribe();
+    console.log("Transformed Riders for UI:", transformedRiders);
+    setRiders(transformedRiders);
+  };
 
-		return () => {
-			supabase.removeChannel(channel);
-		};
-	}, []);
+  // 2. Realtime Listener
+  useEffect(() => {
+    fetchRiders();
 
-	// 3. If RIDER: Push location to Supabase periodically
-	useEffect(() => {
-		if (role !== "RIDER" || !user) return;
+    const channel = supabase
+      .channel("rider_updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "riders_location" },
+        () => {
+          console.log("Realtime change detected, refetching...");
+          fetchRiders();
+        },
+      )
+      .subscribe();
 
-		const pushInterval = setInterval(async () => {
-			const { latitude, longitude } = myLocationRef.current;
-			await supabase.from("riders_location").upsert({
-				id: user.id,
-				latitude,
-				longitude,
-				is_online: true,
-				updated_at: new Date().toISOString(),
-			});
-		}, 10000); // Pulse every 10 seconds
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
-		return () => clearInterval(pushInterval);
-	}, [role, user]);
+  // 3. If RIDER: Push location to Supabase
+  useEffect(() => {
+    if (role !== "RIDER" || !user) return;
 
-	return {
-		riders,
-		myLocation,
-		setMyLocation,
-		setLocationPermission,
-		locationPermission,
-	};
+    const pushInterval = setInterval(async () => {
+      const { latitude, longitude } = myLocationRef.current;
+
+      const { error } = await supabase.from("riders_location").upsert({
+        id: user.id,
+        latitude: latitude,
+        longitude: longitude,
+        is_online: true,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.error("Error pushing rider location:", error.message);
+      }
+    }, 10000);
+
+    return () => clearInterval(pushInterval);
+  }, [role, user]);
+
+  return {
+    riders,
+    myLocation,
+    setMyLocation,
+    setLocationPermission,
+    locationPermission,
+  };
 };
