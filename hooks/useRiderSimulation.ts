@@ -1,84 +1,134 @@
 import { supabase } from "@/lib/supabase";
-import { Rider } from "@/lib/type";
-import { useEffect, useRef, useState } from "react";
+import { Rider, RiderQueryResult } from "@/lib/type";
+import { useIsFocused } from "@react-navigation/native";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "./useAuth";
 
 export const useRiderSimulation = () => {
   const { user, role } = useAuth();
-  const [myLocation, setMyLocation] = useState({
-    latitude: -7.2575,
-    longitude: 112.7521,
-  });
+  const [myLocation, setMyLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [riders, setRiders] = useState<Rider[]>([]);
-  const [locationPermission, setLocationPermission] = useState<boolean | null>(
-    null,
-  );
-  const myLocationRef = useRef(myLocation);
 
+  const myLocationRef = useRef(myLocation);
+  const isFocused = useIsFocused();
+
+  // Sinkronisasi Ref agar interval selalu dapat lokasi terbaru
   useEffect(() => {
     myLocationRef.current = myLocation;
   }, [myLocation]);
 
-  // 1. Fetch Riders & Their Locations (JOIN Profiles agar nama muncul)
-  const fetchRiders = async () => {
+  // --- 1. Helper: Transformasi Data (Memoized) ---
+  const transformRiderData = useCallback(
+    (item: RiderQueryResult): Rider => ({
+      id: item.profiles?.id || item.id,
+      name: item.profiles?.full_name || "Driver",
+      avatar: item.profiles?.avatar_url || undefined,
+      latitude: Number(item.latitude),
+      longitude: Number(item.longitude),
+      isOpen: item.is_online ?? false,
+      workStartTime: item.work_start_time || "08:00",
+      workEndTime: item.work_end_time || "22:00",
+      inventory: (item.profiles?.rider_inventory || []).map((inv) => ({
+        id: inv.menu_items?.id || inv.id,
+        name: inv.menu_items?.name || "Produk",
+        qty: inv.quantity,
+        price: inv.menu_items?.price || 0,
+      })),
+    }),
+    [],
+  );
+
+  // --- 2. Fetch Semua Rider (Memoized) ---
+  const fetchAllRiders = useCallback(async () => {
     const { data, error } = await supabase
-      .from("riders_location")
+      .from("riders")
       .select(
         `
-        latitude,
-        longitude,
-        is_online,
-        profiles (
-          id,
-          full_name,
-          role
+        id, latitude, longitude, is_online, work_start_time, work_end_time,
+        profiles ( 
+          id, full_name, role, avatar_url,
+          rider_inventory ( 
+            id, quantity, 
+            menu_items ( id, name, price ) 
+          )
         )
       `,
       )
-      .eq("profiles.role", "RIDER"); // Hanya ambil yang rolenya RIDER
+      .not("profiles", "is", null)
+      .eq("profiles.role", "RIDER");
 
     if (error) {
-      console.error("Error fetching riders:", error);
+      console.error("Error fetching all riders:", error);
       return;
     }
 
-    console.log("Raw Data from DB:", data);
+    const rawData = data as unknown as RiderQueryResult[];
+    setRiders(rawData.map(transformRiderData));
+  }, [transformRiderData]);
 
-    // Transform to Rider type
-    const transformedRiders: Rider[] = (data || [])
-      .filter((item: any) => item.profiles) // Pastikan data profile-nya ada
-      .map((item: any) => {
-        const rLat = parseFloat(item.latitude);
-        const rLng = parseFloat(item.longitude);
+  // --- 3. Fetch Single Rider (Memoized) ---
+  const fetchSingleRider = useCallback(
+    async (id: string) => {
+      const { data, error } = await supabase
+        .from("riders")
+        .select(
+          `
+        id, latitude, longitude, is_online, work_start_time, work_end_time,
+        profiles ( 
+          id, full_name, role, avatar_url,
+          rider_inventory ( 
+            id, quantity, 
+            menu_items ( id, name, price ) 
+          )
+        )
+      `,
+        )
+        .eq("id", id)
+        .single();
 
-        return {
-          id: item.profiles.id,
-          name: item.profiles.full_name || "Rider", // Ini yang bikin SEARCH ketemu
-          latOffset: rLat - myLocationRef.current.latitude,
-          lngOffset: rLng - myLocationRef.current.longitude,
-          isOpen: item.is_online || false,
-          workStartTime: "00:00",
-          workEndTime: "23:59",
-          inventory: [],
-        };
-      });
+      if (error || !data) return;
 
-    console.log("Transformed Riders for UI:", transformedRiders);
-    setRiders(transformedRiders);
-  };
+      const transformed = transformRiderData(
+        data as unknown as RiderQueryResult,
+      );
+      setRiders((prev) => [...prev.filter((r) => r.id !== id), transformed]);
+    },
+    [transformRiderData],
+  );
 
-  // 2. Realtime Listener
+  // --- 4. Realtime Listener ---
   useEffect(() => {
-    fetchRiders();
+    if (!isFocused) return;
+
+    fetchAllRiders();
 
     const channel = supabase
       .channel("rider_updates")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "riders_location" },
-        () => {
-          console.log("Realtime change detected, refetching...");
-          fetchRiders();
+        { event: "*", schema: "public", table: "riders" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            fetchSingleRider(payload.new.id);
+          } else if (payload.eventType === "UPDATE") {
+            setRiders((prev) =>
+              prev.map((r) =>
+                r.id === payload.new.id
+                  ? {
+                      ...r,
+                      latitude: Number(payload.new.latitude),
+                      longitude: Number(payload.new.longitude),
+                      isOpen: payload.new.is_online,
+                    }
+                  : r,
+              ),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setRiders((prev) => prev.filter((r) => r.id !== payload.old.id));
+          }
         },
       )
       .subscribe();
@@ -86,36 +136,31 @@ export const useRiderSimulation = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isFocused, fetchAllRiders, fetchSingleRider]);
 
-  // 3. If RIDER: Push location to Supabase
+  // --- 5. Push Location Interval (Rider Only) ---
   useEffect(() => {
-    if (role !== "RIDER" || !user) return;
+    if (!isFocused || role !== "RIDER" || !user) return;
 
     const pushInterval = setInterval(async () => {
-      const { latitude, longitude } = myLocationRef.current;
+      const currentLoc = myLocationRef.current;
+      if (!currentLoc) return;
 
-      const { error } = await supabase.from("riders_location").upsert({
-        id: user.id,
-        latitude: latitude,
-        longitude: longitude,
-        is_online: true,
-        updated_at: new Date().toISOString(),
-      });
+      const { error } = await supabase.from("riders").upsert([
+        {
+          id: user.id,
+          latitude: currentLoc.latitude,
+          longitude: currentLoc.longitude,
+          is_online: true,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
 
-      if (error) {
-        console.error("Error pushing rider location:", error.message);
-      }
-    }, 10000);
+      if (error) console.error("Push Error:", error.message);
+    }, 5000);
 
     return () => clearInterval(pushInterval);
-  }, [role, user]);
+  }, [role, user, isFocused]);
 
-  return {
-    riders,
-    myLocation,
-    setMyLocation,
-    setLocationPermission,
-    locationPermission,
-  };
+  return { riders, myLocation, setMyLocation };
 };

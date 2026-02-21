@@ -1,25 +1,21 @@
--- 1. Hapus yang lama jika ada
-drop trigger if exists on_auth_user_created on auth.users;
+-- Hapus semua tabel di schema 'public'
+DO $$ DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+    END LOOP;
+END $$;
 
--- 2. Buat fungsi dengan path yang jelas
-create or replace function public.handle_new_user()
-returns trigger 
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, full_name, avatar_url, role)
-  values (
-    new.id, 
-    new.raw_user_meta_data->>'full_name', 
-    new.raw_user_meta_data->>'avatar_url',
-    'GUEST'
-  );
-  return new;
-end;
-$$ language plpgsql;
-
--- 3. Pasang trigger
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+-- Hapus semua enum custom (seperti order_status dan user_role)
+DO $$ DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT typname FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e') LOOP
+        EXECUTE 'DROP TYPE IF EXISTS ' || quote_ident(r.r_name) || ' CASCADE';
+    END LOOP;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Jika query enum di atas gagal karena versi Postgres, gunakan cara manual di bawah
+        NULL;
+END $$;

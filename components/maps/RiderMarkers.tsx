@@ -5,14 +5,12 @@ import { Callout, LatLng, Marker } from "react-native-maps";
 
 export interface RiderMarkersProps {
   riders: Rider[];
-  myLocation: LatLng;
   onRiderPress: (rider: Rider) => void;
-  markerRefs: React.MutableRefObject<{ [key: number]: any }>;
+  markerRefs: React.MutableRefObject<{ [key: string]: any }>;
 }
 
 const RiderMarkers = ({
   riders,
-  myLocation,
   onRiderPress,
   markerRefs,
 }: RiderMarkersProps) => {
@@ -41,8 +39,8 @@ const RiderMarkers = ({
             }}
             key={rider.id}
             coordinate={{
-              latitude: myLocation.latitude + rider.latOffset,
-              longitude: myLocation.longitude + rider.lngOffset,
+              latitude: rider.latitude,
+              longitude: rider.longitude,
             }}
             tracksViewChanges={false}
             title={`Rider ${rider.name} • (${statusLabel})`}

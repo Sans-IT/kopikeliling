@@ -11,7 +11,7 @@ export default function RiderDetail() {
   const { theme } = useAppTheme();
 
   // CARI data rider berdasarkan ID dari list global
-  const rider = riders.find((r) => r.id === Number(id));
+  const rider = riders.find((r) => r.id === String(id));
 
   if (!rider) return <Text>Rider tidak ditemukan...</Text>;
 
@@ -54,7 +54,10 @@ export default function RiderDetail() {
         ))}
 
         {(!rider.inventory || rider.inventory.length === 0) && (
-          <Text className="italic text-center mt-4">
+          <Text
+            className="italic text-center mt-4"
+            style={{ textAlign: "center" }}
+          >
             Stok sedang kosong/diperbarui
           </Text>
         )}
