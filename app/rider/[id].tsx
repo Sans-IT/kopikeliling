@@ -7,7 +7,7 @@ import { Avatar, Divider, List, Text } from "react-native-paper";
 
 export default function RiderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { riders } = useRiderSimulation();
+  const { riders } = useRiderSimulation(); // Ambil data rider dari hook yang sama
   const { theme } = useAppTheme();
 
   // CARI data rider berdasarkan ID dari list global

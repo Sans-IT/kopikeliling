@@ -15,6 +15,22 @@ export const useRiderSimulation = () => {
   const myLocationRef = useRef(myLocation);
   const isFocused = useIsFocused();
 
+  const lastPushedRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const hasMovedSignificantly = (
+    a: { latitude: number; longitude: number },
+    b: { latitude: number; longitude: number },
+  ) => {
+    const diffLat = Math.abs(a.latitude - b.latitude);
+    const diffLng = Math.abs(a.longitude - b.longitude);
+
+    // threshold ±11 meter
+    return diffLat > 0.0001 || diffLng > 0.0001;
+  };
+
   // Sinkronisasi Ref agar interval selalu dapat lokasi terbaru
   useEffect(() => {
     myLocationRef.current = myLocation;
@@ -142,22 +158,42 @@ export const useRiderSimulation = () => {
   useEffect(() => {
     if (!isFocused || role !== "RIDER" || !user) return;
 
-    const pushInterval = setInterval(async () => {
-      const currentLoc = myLocationRef.current;
-      if (!currentLoc) return;
+    const pushLocation = async () => {
+      try {
+        const currentLoc = myLocationRef.current;
+        if (!currentLoc) return;
 
-      const { error } = await supabase.from("riders").upsert([
-        {
-          id: user.id,
-          latitude: currentLoc.latitude,
-          longitude: currentLoc.longitude,
-          is_online: true,
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+        // ✅ skip jika belum bergerak signifikan
+        if (
+          lastPushedRef.current &&
+          !hasMovedSignificantly(currentLoc, lastPushedRef.current)
+        ) {
+          return;
+        }
 
-      if (error) console.error("Push Error:", error.message);
-    }, 5000);
+        const { error } = await supabase.from("riders").upsert([
+          {
+            id: user.id,
+            latitude: currentLoc.latitude,
+            longitude: currentLoc.longitude,
+            is_online: true,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+
+        if (error) {
+          console.error("Push Error:", error.message);
+          return;
+        }
+
+        // ✅ simpan lokasi terakhir yang berhasil dipush
+        lastPushedRef.current = currentLoc;
+      } catch (err) {
+        console.error("Push Location Exception:", err);
+      }
+    };
+
+    const pushInterval = setInterval(pushLocation, 5000);
 
     return () => clearInterval(pushInterval);
   }, [role, user, isFocused]);

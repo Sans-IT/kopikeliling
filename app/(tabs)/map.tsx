@@ -24,27 +24,25 @@ export default function Map() {
     null,
   );
   const { riders, myLocation, setMyLocation } = useRiderSimulation(); // <- Hook database state
-  // Cari data rider yang terpilih dari array riders yang selalu update
   const currentRiderData = riders.find((r) => r.id === selectedRider?.id);
+  const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const routeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animasi gps ke User lokasi saat ini
   useEffect(() => {
     if (mapRef.current && myLocation && !hasInitialZoom.current) {
-      mapRef.current.animateToRegion(
-        {
-          ...myLocation,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        },
-        1000,
-      );
+      mapRef.current.animateToRegion({
+        ...myLocation,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      });
       hasInitialZoom.current = true;
     }
   }, [myLocation]);
 
   // 1. Ambil lokasi user saat pertama kali (GPS HP)
   useEffect(() => {
-    let subscription: any;
+    let isMounted = true;
 
     const startWatching = async () => {
       try {
@@ -53,15 +51,18 @@ export default function Map() {
           setLocationPermission(false);
           return;
         }
+
         setLocationPermission(true);
-        // watchPositionAsync akan menjalankan callback setiap kali kamu bergerak
-        subscription = await Location.watchPositionAsync(
+
+        subscriptionRef.current = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 1, // Update setiap kamu pindah 1 meter
-            timeInterval: 5000, // Atau setiap 5 detik
+            accuracy: Location.Accuracy.BestForNavigation, // ✅ hemat baterai
+            distanceInterval: 3, // ✅ hanya update jika bergerak >5 meter
+            timeInterval: 5000, // ✅ lebih smooth
           },
           (location) => {
+            if (!isMounted) return;
+
             setMyLocation({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
@@ -69,24 +70,28 @@ export default function Map() {
           },
         );
       } catch (e) {
-        console.error(e);
+        console.error("Location watcher error:", e);
       }
     };
 
     startWatching();
-    // Cleanup: matikan GPS kalau layar ditutup agar baterai awet
+
     return () => {
-      if (subscription) subscription.remove();
+      isMounted = false;
+      subscriptionRef.current?.remove();
     };
   }, []);
 
   // 2. Efek Realtime Route: Update garis saat Rider bergerak
   useEffect(() => {
-    // Jika tidak ada rider terpilih atau lokasi kita belum ada, berhenti.
     if (!selectedRider || !currentRiderData || !myLocation) return;
 
-    const updateRoute = async () => {
-      // PAKAI KOORDINAT ASLI (Bukan Offset lagi)
+    // ✅ debounce supaya tidak spam OSRM
+    if (routeTimeoutRef.current) {
+      clearTimeout(routeTimeoutRef.current);
+    }
+
+    routeTimeoutRef.current = setTimeout(async () => {
       const riderPos = {
         latitude: currentRiderData.latitude,
         longitude: currentRiderData.longitude,
@@ -96,15 +101,14 @@ export default function Map() {
       if (coords && coords.length > 0) {
         setRouteCoords(coords);
       }
-    };
+    }, 800); // debounce 800ms
 
-    updateRoute();
-  }, [
-    currentRiderData?.latitude, // Trigger saat lat rider berubah di DB
-    currentRiderData?.longitude, // Trigger saat lng rider berubah di DB
-    myLocation?.latitude,
-    selectedRider?.id,
-  ]);
+    return () => {
+      if (routeTimeoutRef.current) {
+        clearTimeout(routeTimeoutRef.current);
+      }
+    };
+  }, [currentRiderData, myLocation, selectedRider]);
 
   const handleRiderPress = async (rider: Rider) => {
     if (!myLocation) return setLocationPermission(false);
