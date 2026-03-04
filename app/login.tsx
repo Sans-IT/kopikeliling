@@ -15,7 +15,6 @@ export default function Login() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
-	const { session } = useAuth();
 
 	// Fungsi Masuk (Sign In dengan Email)
 	async function signInWithEmail() {
@@ -25,7 +24,7 @@ export default function Login() {
 		}
 
 		setLoading(true);
-		const { error } = await supabase.auth.signInWithPassword({
+		const { error, data } = await supabase.auth.signInWithPassword({
 			email: email,
 			password: password,
 		});
@@ -34,19 +33,20 @@ export default function Login() {
 			Alert.alert("Gagal Masuk", error.message);
 		}
 		setLoading(false);
+		if (data.session) {
+			router.replace("/(tabs)/beranda");
+		}
 	}
 
 	return (
 		<SafeAreaView
 			className="flex-1"
-			style={{ backgroundColor: theme.colors.background }}
-		>
+			style={{ backgroundColor: theme.colors.background }}>
 			<View className="flex-1 p-8 justify-center">
 				{/* --- HEADER & LOGO --- */}
 				<ScrollView
 					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-				>
+					contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
 					<View className="items-center mb-10">
 						<Image
 							source={require("@/assets/images/logo.png")} // Pastikan file logo ada di sini
@@ -55,14 +55,12 @@ export default function Login() {
 						/>
 						<Text
 							className="text-3xl font-bold mt-5"
-							style={{ fontWeight: "bold" }}
-						>
+							style={{ fontWeight: "bold" }}>
 							Login
 						</Text>
 						<Text
 							className="mt-2 text-center text-xl w-full text-center"
-							style={{ textAlign: "center" }}
-						>
+							style={{ textAlign: "center" }}>
 							Selamat Datang di KopiKeliling Silahkan masuk ke akun Anda
 						</Text>
 					</View>
@@ -110,8 +108,7 @@ export default function Login() {
 							onPress={signInWithEmail}
 							disabled={loading}
 							className="py-1 bg-[#1a2e35]" // Warna dark navy sesuai desain
-							labelStyle={{ fontSize: 16, fontWeight: "bold", color: "white" }}
-						>
+							labelStyle={{ fontSize: 16, fontWeight: "bold", color: "white" }}>
 							{loading ? (
 								<ActivityIndicator color="white" size="small" />
 							) : (
@@ -145,8 +142,7 @@ export default function Login() {
 			{/* --- BYPASS BUTTON (Pojok Kanan Atas) --- */}
 			<TouchableOpacity
 				className="absolute top-14 right-6 p-2"
-				onPress={() => router.push("/(tabs)/map")}
-			>
+				onPress={() => router.push("/(tabs)/map")}>
 				<Text className="text-gray-400 font-medium">Lewati {">"}</Text>
 			</TouchableOpacity>
 		</SafeAreaView>

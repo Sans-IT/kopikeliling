@@ -22,8 +22,7 @@ function AppContent() {
 							headerShown: false,
 							headerStyle: { backgroundColor: theme.colors.primary },
 							headerTintColor: theme.colors.onPrimary,
-						}}
-					>
+						}}>
 						<Stack.Screen name="index" />
 						<Stack.Screen
 							name="notification"
@@ -38,6 +37,13 @@ function AppContent() {
 							options={{
 								headerShown: true,
 								headerTitle: "Detail Rider",
+							}}
+						/>
+						<Stack.Screen
+							name="riderlist"
+							options={{
+								title: "Daftar Rider",
+								headerShown: true,
 							}}
 						/>
 					</Stack>
